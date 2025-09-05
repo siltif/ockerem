@@ -1,28 +1,70 @@
-// WebSocket bağlantısı
 const ws = new WebSocket(`wss://${location.host}`);
+let username = "";
+let photoURL = "";
 let peerConnection;
+let localStream;
 
-// ---- Mesajlaşma ----
+// Giriş yapınca
+function enterChat() {
+  username = document.getElementById("username").value || "Misafir";
+  const photoFile = document.getElementById("photo").files[0];
+
+  if (photoFile) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      photoURL = reader.result;
+      sendJoin();
+    };
+    reader.readAsDataURL(photoFile);
+  } else {
+    sendJoin();
+  }
+}
+
+function sendJoin() {
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("chatUI").classList.remove("hidden");
+
+  ws.send(JSON.stringify({ type: "join", username, photo: photoURL }));
+}
+
+// Mesaj gönderme
+function sendMessage() {
+  const input = document.getElementById("msgInput");
+  ws.send(JSON.stringify({ type: "chat", text: input.value, username }));
+  input.value = "";
+}
+
+// Tema değiştir
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+}
+
+// WebSocket mesajları
 ws.addEventListener("message", (event) => {
-  try {
-    const msg = JSON.parse(event.data);
+  const msg = JSON.parse(event.data);
 
-    // WebRTC sinyali geldiyse işleme
-    if (msg.type === "offer" || msg.type === "answer" || msg.type === "candidate") {
-      handleSignal(msg);
-      return;
-    }
-  } catch {
-    // JSON değilse demek ki düz chat mesajıdır
+  if (msg.type === "chat") {
     const chat = document.getElementById("chat");
-    chat.innerHTML += "<p>" + event.data + "</p>";
+    chat.innerHTML += `<p><b>${msg.username}:</b> ${msg.text}</p>`;
+  } else if (msg.type === "join") {
+    updateUsers(msg.users);
+  } else if (["offer","answer","candidate"].includes(msg.type)) {
+    handleSignal(msg);
   }
 });
 
-function sendMessage() {
-  const input = document.getElementById("msgInput");
-  ws.send(input.value);
-  input.value = "";
+// Kullanıcı listesi güncelleme
+function updateUsers(users) {
+  const container = document.getElementById("users");
+  container.innerHTML = "";
+  users.forEach(u => {
+    const div = document.createElement("div");
+    div.className = "user";
+    div.id = `user-${u.username}`;
+    div.innerHTML = `<img src="${u.photo || 'https://via.placeholder.com/40'}"><span>${u.username}</span>`;
+    container.appendChild(div);
+  });
 }
 
 // ---- Sesli Sohbet ----
@@ -62,13 +104,30 @@ function createPeerConnection() {
 async function startVoice() {
   document.getElementById("status").innerText = "🎙️ Ses başlatılıyor...";
   peerConnection = createPeerConnection();
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   ws.send(JSON.stringify(offer));
 
   document.getElementById("status").innerText = "✅ Sesli sohbet aktif!";
-}
 
+  // Konuşma algılama -> profil çerçevesi yeşil
+  const analyser = new AudioContext().createAnalyser();
+  const src = new AudioContext().createMediaStreamSource(localStream);
+  src.connect(analyser);
+  const data = new Uint8Array(analyser.frequencyBinCount);
+
+  function detectSpeech() {
+    analyser.getByteFrequencyData(data);
+    let volume = data.reduce((a,b) => a+b, 0) / data.length;
+    const me = document.getElementById(`user-${username}`);
+    if (me) {
+      me.classList.toggle("speaking", volume > 10);
+    }
+    requestAnimationFrame(detectSpeech);
+  }
+  detectSpeech();
+}
