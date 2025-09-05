@@ -1,14 +1,27 @@
-// ===============================
-// OCKEREM SERVER
-// ===============================
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const WebSocket = require("ws");
 
-const server = http.createServer();
+const server = http.createServer((req, res) => {
+  let filePath = req.url === "/" ? "/index.html" : req.url;
+  filePath = path.join(__dirname, "public", filePath);
+
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(404);
+      res.end("404 Not Found");
+    } else {
+      res.writeHead(200);
+      res.end(content);
+    }
+  });
+});
+
 const wss = new WebSocket.Server({ server });
 
-let rooms = {}; // { roomId: { name, max, users: [] } }
-let userRoom = new Map(); // ws -> roomId
+let rooms = {}; // {id: {name, max, users: []}}
+let userRoom = new Map();
 
 function broadcast(roomId, data) {
   const msg = JSON.stringify(data);
@@ -24,14 +37,10 @@ wss.on("connection", (ws) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
-    // ---- Oda oluşturma ----
+    // Oda oluşturma
     if (msg.type === "create") {
       const id = Date.now().toString();
-      rooms[id] = {
-        name: msg.name,
-        max: msg.max,
-        users: []
-      };
+      rooms[id] = { name: msg.name, max: msg.max, users: [] };
       rooms[id].users.push({ username: msg.account.username, photo: msg.account.photo, ws });
       userRoom.set(ws, id);
       ws.send(JSON.stringify({ type: "joined", room: id, users: rooms[id].users }));
@@ -39,7 +48,7 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // ---- Odaya katılma ----
+    // Odaya katılma
     if (msg.type === "join") {
       const room = rooms[msg.roomId];
       if (!room) return;
@@ -54,7 +63,7 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // ---- Chat ----
+    // Chat
     if (msg.type === "chat") {
       const roomId = userRoom.get(ws);
       if (!roomId) return;
@@ -62,7 +71,7 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // ---- WebRTC sinyalleme ----
+    // WebRTC sinyalleme
     if (["offer", "answer", "candidate"].includes(msg.type)) {
       const roomId = userRoom.get(ws);
       if (!roomId) return;
@@ -89,7 +98,6 @@ wss.on("connection", (ws) => {
   });
 });
 
-// ---- Oda listesini tüm kullanıcılara gönder ----
 function sendRoomList() {
   const list = Object.keys(rooms).map(id => ({
     id,
@@ -105,6 +113,4 @@ function sendRoomList() {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log("OCKEREM server running on", PORT));
