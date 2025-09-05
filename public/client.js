@@ -145,3 +145,41 @@ function removeAvatar(id) {
   if (el) el.remove();
 }
 
+// === Oda listesi render ===
+function renderRoomList(rooms) {
+  const list = document.getElementById("rooms");
+  list.innerHTML = "";
+  rooms.forEach(r => {
+    const btn = document.createElement("button");
+    btn.className = "btn block";
+    btn.innerText = `${r.name} (${r.count}/${r.max})`;
+    btn.onclick = () => ws.send(JSON.stringify({ type: "join-room", room: r.name }));
+    list.appendChild(btn);
+  });
+}
+
+// === Chat ===
+document.getElementById("btn-bell").addEventListener("click", () => {
+  document.getElementById("chat-panel").classList.toggle("hidden");
+});
+
+document.getElementById("chat-send").addEventListener("click", sendChat);
+document.getElementById("chat-text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendChat();
+});
+
+function sendChat() {
+  const input = document.getElementById("chat-text");
+  const text = input.value.trim();
+  if (!text) return;
+  ws.send(JSON.stringify({ type: "chat", text }));
+  input.value = "";
+}
+
+function addChatMessage(msg) {
+  const box = document.getElementById("chat-messages");
+  const p = document.createElement("p");
+  p.innerText = `${msg.from.username}: ${msg.text}`;
+  box.appendChild(p);
+  box.scrollTop = box.scrollHeight;
+}
