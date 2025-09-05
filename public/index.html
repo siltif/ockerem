@@ -5,33 +5,30 @@
   <title>Ockerem</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div id="login">
+<body class="dark">
+  <!-- Ana Menü -->
+  <div id="menu">
     <h1>Ockerem</h1>
     <input id="username" type="text" placeholder="Kullanıcı adı" />
     <input id="photo" type="file" accept="image/*" />
-    <button onclick="enterChat()">Sohbete Gir</button>
+    <button onclick="enterRoom()">Odaya Gir</button>
   </div>
 
-  <div id="chatUI" class="hidden">
+  <!-- Sohbet Odası -->
+  <div id="room" class="hidden">
     <header>
       <h1>Ockerem</h1>
-      <button onclick="toggleTheme()">🌙/☀️</button>
     </header>
 
     <main>
-      <div id="chatArea">
-        <div id="chat"></div>
-        <input id="msgInput" type="text" placeholder="Mesaj yaz..." />
-        <button onclick="sendMessage()">Gönder</button>
-      </div>
-
       <div id="users"></div>
     </main>
 
     <footer>
-      <button onclick="startVoice()">🎙️ Sesli Sohbet Başlat</button>
-      <div id="status">Durum: Bekleniyor...</div>
+      <button id="btnMute" onclick="toggleMute()">🎙️ Mute</button>
+      <button id="btnDeafen" onclick="toggleDeafen()">🔇 Kulaklık</button>
+      <button onclick="leaveRoom()">🚪 Çık</button>
+      <button onclick="shareScreen()">🖥️ Ekran Paylaş</button>
     </footer>
   </div>
 
