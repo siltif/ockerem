@@ -1,138 +1,120 @@
-const ws = new WebSocket(`wss://${location.host}`);
-let username = "";
-let photoURL = "";
-let peerConnection;
-let localStream;
-let muted = false;
-let deafened = false;
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>OCKEREM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dark">
+  <!-- Breadcrumb -->
+  <div id="crumb" class="crumb">Menü</div>
 
-function enterRoom() {
-  username = document.getElementById("username").value || "Misafir";
-  const photoFile = document.getElementById("photo").files[0];
+  <!-- Hesap (ilk sefer) -->
+  <section id="view-account" class="view show">
+    <div class="card animate-in">
+      <h1>OCKEREM</h1>
+      <p class="muted">Hesap oluştur (bir kez)</p>
+      <input id="acc-username" class="input" type="text" maxlength="24" placeholder="Kullanıcı adı" />
+      <label class="file">
+        <input id="acc-photo" type="file" accept="image/*" />
+        Profil fotoğrafı (opsiyonel)
+      </label>
+      <button id="btn-save-account" class="btn primary">Kaydet</button>
+    </div>
+  </section>
 
-  if (photoFile) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      photoURL = reader.result;
-      join();
-    };
-    reader.readAsDataURL(photoFile);
-  } else {
-    join();
-  }
-}
+  <!-- Ana Menü -->
+  <section id="view-menu" class="view hidden">
+    <div class="card animate-in">
+      <h1>OCKEREM</h1>
+      <div class="menu-grid">
+        <button id="goto-create" class="btn block">Oda Oluştur</button>
+        <button id="goto-join" class="btn block">Odaya Katıl</button>
+      </div>
+    </div>
+  </section>
 
-function join() {
-  document.getElementById("menu").classList.add("hidden");
-  document.getElementById("room").classList.remove("hidden");
-  ws.send(JSON.stringify({ type: "join", username, photo: photoURL }));
-}
+  <!-- Oda Oluştur -->
+  <section id="view-create" class="view hidden">
+    <div class="card animate-in">
+      <h2>Oda Oluştur</h2>
+      <input id="room-name" class="input" type="text" placeholder="Oda adı..." />
+      <label class="range">
+        Maksimum kişi: <span id="max-out">2</span>
+        <input id="max-count" type="range" min="2" max="5" value="2" />
+      </label>
+      <div class="row">
+        <button id="create-back" class="btn ghost">Geri</button>
+        <button id="create-room" class="btn primary">Odayı Aç</button>
+      </div>
+    </div>
+  </section>
 
-function leaveRoom() {
-  ws.close();
-  location.reload();
-}
+  <!-- Odaya Katıl -->
+  <section id="view-join" class="view hidden">
+    <div class="card animate-in">
+      <h2>Odaya Katıl</h2>
+      <div id="rooms" class="room-list"></div>
+      <div class="slots">
+        <div class="slot" data-i="1"></div>
+        <div class="slot" data-i="2"></div>
+        <div class="slot" data-i="3"></div>
+        <div class="slot" data-i="4"></div>
+        <div class="slot" data-i="5"></div>
+      </div>
+      <div class="row">
+        <button id="join-back" class="btn ghost">Geri</button>
+      </div>
+    </div>
+  </section>
 
-ws.addEventListener("message", (event) => {
-  const msg = JSON.parse(event.data);
+  <!-- Oda İçi -->
+  <section id="view-call" class="view hidden">
+    <div class="topbar">
+      <div class="left">
+        <span class="title">Arama</span>
+      </div>
+      <div class="right">
+        <button id="btn-bell" class="icon-btn" title="Mesajlar">
+          <span class="bell-dot hidden"></span>
+          🔔
+        </button>
+      </div>
+    </div>
 
-  if (msg.type === "join") {
-    updateUsers(msg.users);
-  } else if (["offer","answer","candidate"].includes(msg.type)) {
-    handleSignal(msg);
-  }
-});
+    <div id="avatars" class="avatars animate-in"></div>
 
-function updateUsers(users) {
-  const container = document.getElementById("users");
-  container.innerHTML = "";
-  users.forEach(u => {
-    const div = document.createElement("div");
-    div.className = "user";
-    div.id = `user-${u.username}`;
-    div.innerHTML = `<img src="${u.photo || 'https://via.placeholder.com/80'}"><span>${u.username}</span>`;
-    container.appendChild(div);
-  });
-}
+    <!-- Chat panel (gizli açılır) -->
+    <div id="chat-panel" class="chat-panel hidden">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input id="chat-text" type="text" placeholder="Mesaj Gönder..." />
+        <button id="chat-send" class="btn sm">Gönder</button>
+      </div>
+    </div>
 
-function toggleMute() {
-  if (!localStream) return;
-  muted = !muted;
-  localStream.getAudioTracks().forEach(track => track.enabled = !muted);
-  document.getElementById("btnMute").innerText = muted ? "❌ Mute" : "🎙️ Mute";
-}
+    <!-- Kontrol çubuğu -->
+    <div class="controls">
+      <button id="btn-mic" class="icon-btn" title="Mikrofon">🎙️</button>
+      <button id="btn-headphones" class="icon-btn" title="Kulaklık">🎧</button>
+      <button id="btn-screen" class="icon-btn" title="Ekran Paylaş">🖥️</button>
+      <button id="btn-leave" class="icon-btn danger" title="Çık">🚪</button>
+    </div>
+  </section>
 
-function toggleDeafen() {
-  deafened = !deafened;
-  document.querySelectorAll("audio").forEach(a => a.muted = deafened);
-  document.getElementById("btnDeafen").innerText = deafened ? "❌ Kulaklık" : "🔇 Kulaklık";
-}
+  <!-- Çıkış Popup -->
+  <div id="leave-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Emin misin?</h3>
+      <p>Odayı terk etmek istediğine emin misin?</p>
+      <div class="row">
+        <button id="leave-cancel" class="btn ghost">Vazgeç</button>
+        <button id="leave-confirm" class="btn danger">Çık</button>
+      </div>
+    </div>
+  </div>
 
-async function shareScreen() {
-  const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-  const videoTrack = screenStream.getVideoTracks()[0];
-  const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
-  if (sender) sender.replaceTrack(videoTrack);
-}
-
-// ---- WebRTC ----
-async function handleSignal(msg) {
-  if (msg.type === "offer") {
-    peerConnection = createPeerConnection();
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(msg));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    ws.send(JSON.stringify(answer));
-  } else if (msg.type === "answer") {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(msg));
-  } else if (msg.type === "candidate") {
-    await peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
-  }
-}
-
-function createPeerConnection() {
-  const pc = new RTCPeerConnection();
-
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate }));
-    }
-  };
-
-  pc.ontrack = (event) => {
-    const audio = document.createElement("audio");
-    audio.srcObject = event.streams[0];
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-  };
-
-  return pc;
-}
-
-async function startVoice() {
-  peerConnection = createPeerConnection();
-  localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  ws.send(JSON.stringify(offer));
-
-  // Konuşma algılama
-  const ctx = new AudioContext();
-  const analyser = ctx.createAnalyser();
-  const src = ctx.createMediaStreamSource(localStream);
-  src.connect(analyser);
-  const data = new Uint8Array(analyser.frequencyBinCount);
-
-  function detectSpeech() {
-    analyser.getByteFrequencyData(data);
-    let volume = data.reduce((a,b) => a+b, 0) / data.length;
-    const me = document.getElementById(`user-${username}`);
-    if (me) me.classList.toggle("speaking", volume > 10);
-    requestAnimationFrame(detectSpeech);
-  }
-  detectSpeech();
-}
-
-startVoice();
+  <script src="client.js"></script>
+</body>
+</html>
