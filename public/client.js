@@ -3,9 +3,10 @@ let username = "";
 let photoURL = "";
 let peerConnection;
 let localStream;
+let muted = false;
+let deafened = false;
 
-// Giriş yapınca
-function enterChat() {
+function enterRoom() {
   username = document.getElementById("username").value || "Misafir";
   const photoFile = document.getElementById("photo").files[0];
 
@@ -13,48 +14,35 @@ function enterChat() {
     const reader = new FileReader();
     reader.onload = () => {
       photoURL = reader.result;
-      sendJoin();
+      join();
     };
     reader.readAsDataURL(photoFile);
   } else {
-    sendJoin();
+    join();
   }
 }
 
-function sendJoin() {
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("chatUI").classList.remove("hidden");
-
+function join() {
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("room").classList.remove("hidden");
   ws.send(JSON.stringify({ type: "join", username, photo: photoURL }));
 }
 
-// Mesaj gönderme
-function sendMessage() {
-  const input = document.getElementById("msgInput");
-  ws.send(JSON.stringify({ type: "chat", text: input.value, username }));
-  input.value = "";
+function leaveRoom() {
+  ws.close();
+  location.reload();
 }
 
-// Tema değiştir
-function toggleTheme() {
-  document.body.classList.toggle("dark");
-}
-
-// WebSocket mesajları
 ws.addEventListener("message", (event) => {
   const msg = JSON.parse(event.data);
 
-  if (msg.type === "chat") {
-    const chat = document.getElementById("chat");
-    chat.innerHTML += `<p><b>${msg.username}:</b> ${msg.text}</p>`;
-  } else if (msg.type === "join") {
+  if (msg.type === "join") {
     updateUsers(msg.users);
   } else if (["offer","answer","candidate"].includes(msg.type)) {
     handleSignal(msg);
   }
 });
 
-// Kullanıcı listesi güncelleme
 function updateUsers(users) {
   const container = document.getElementById("users");
   container.innerHTML = "";
@@ -62,12 +50,32 @@ function updateUsers(users) {
     const div = document.createElement("div");
     div.className = "user";
     div.id = `user-${u.username}`;
-    div.innerHTML = `<img src="${u.photo || 'https://via.placeholder.com/40'}"><span>${u.username}</span>`;
+    div.innerHTML = `<img src="${u.photo || 'https://via.placeholder.com/80'}"><span>${u.username}</span>`;
     container.appendChild(div);
   });
 }
 
-// ---- Sesli Sohbet ----
+function toggleMute() {
+  if (!localStream) return;
+  muted = !muted;
+  localStream.getAudioTracks().forEach(track => track.enabled = !muted);
+  document.getElementById("btnMute").innerText = muted ? "❌ Mute" : "🎙️ Mute";
+}
+
+function toggleDeafen() {
+  deafened = !deafened;
+  document.querySelectorAll("audio").forEach(a => a.muted = deafened);
+  document.getElementById("btnDeafen").innerText = deafened ? "❌ Kulaklık" : "🔇 Kulaklık";
+}
+
+async function shareScreen() {
+  const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+  const videoTrack = screenStream.getVideoTracks()[0];
+  const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
+  if (sender) sender.replaceTrack(videoTrack);
+}
+
+// ---- WebRTC ----
 async function handleSignal(msg) {
   if (msg.type === "offer") {
     peerConnection = createPeerConnection();
@@ -102,21 +110,18 @@ function createPeerConnection() {
 }
 
 async function startVoice() {
-  document.getElementById("status").innerText = "🎙️ Ses başlatılıyor...";
   peerConnection = createPeerConnection();
-  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-  localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   ws.send(JSON.stringify(offer));
 
-  document.getElementById("status").innerText = "✅ Sesli sohbet aktif!";
-
-  // Konuşma algılama -> profil çerçevesi yeşil
-  const analyser = new AudioContext().createAnalyser();
-  const src = new AudioContext().createMediaStreamSource(localStream);
+  // Konuşma algılama
+  const ctx = new AudioContext();
+  const analyser = ctx.createAnalyser();
+  const src = ctx.createMediaStreamSource(localStream);
   src.connect(analyser);
   const data = new Uint8Array(analyser.frequencyBinCount);
 
@@ -124,10 +129,10 @@ async function startVoice() {
     analyser.getByteFrequencyData(data);
     let volume = data.reduce((a,b) => a+b, 0) / data.length;
     const me = document.getElementById(`user-${username}`);
-    if (me) {
-      me.classList.toggle("speaking", volume > 10);
-    }
+    if (me) me.classList.toggle("speaking", volume > 10);
     requestAnimationFrame(detectSpeech);
   }
   detectSpeech();
 }
+
+startVoice();
