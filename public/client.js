@@ -1,27 +1,21 @@
-// ---- WebSocket (ws/wss) ----
+// WebSocket bağlantısı
 const WS_PROTO = location.protocol === "https:" ? "wss" : "ws";
 const ws = new WebSocket(`${WS_PROTO}://${location.host}`);
 
-// ---- State ----
 let myId = null;
 let account = JSON.parse(localStorage.getItem("account") || "null");
 let currentRoom = null;
 
-// WebRTC
-const peers = new Map();          // id -> RTCPeerConnection
-const dataChannels = new Map();   // id -> RTCDataChannel (chat)
-const remoteAudios = new Map();   // id -> <audio>
+// WebRTC state
+const peers = new Map();
+const remoteAudios = new Map();
 let localStream = null;
-let screenTrack = null;           // replaceable
+let screenTrack = null;
 let hpMuted = false;
 let micMuted = false;
 
-// STUN (mesh 2-5 kişi)
-const RTC_CONFIG = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
+const RTC_CONFIG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-// ---- UI helpers ----
 function qs(id) { return document.getElementById(id); }
 function showView(id, crumb) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
@@ -29,7 +23,7 @@ function showView(id, crumb) {
   document.getElementById("crumb").textContent = crumb;
 }
 
-// ---- Account (first-run) ----
+// Hesap (ilk sefer)
 if (account) {
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify({ type: "account", ...account }));
@@ -59,13 +53,13 @@ function saveAccount(name, photo) {
   showView("view-menu", "Menü");
 }
 
-// ---- Menu nav ----
+// Menü geçişleri
 qs("goto-create").onclick = () => showView("view-create", "Oda Oluştur");
 qs("goto-join").onclick = () => showView("view-join", "Odaya Katıl");
 qs("create-back").onclick = () => showView("view-menu", "Menü");
 qs("join-back").onclick = () => showView("view-menu", "Menü");
 
-// ---- Create Room ----
+// Oda oluşturma
 qs("max-count").oninput = (e) => (qs("max-out").textContent = e.target.value);
 qs("create-room").onclick = () => {
   const roomName = qs("room-name").value.trim();
@@ -75,7 +69,7 @@ qs("create-room").onclick = () => {
   showView("view-join", "Odaya Katıl");
 };
 
-// ---- WS messages ----
+// WebSocket mesajları
 ws.addEventListener("message", async (ev) => {
   const msg = JSON.parse(ev.data);
 
@@ -97,7 +91,6 @@ ws.addEventListener("message", async (ev) => {
   }
 
   if (msg.type === "peers") {
-    // mevcut odadaki herkese OFFER başlat
     for (const pid of msg.peers) {
       await ensureLocalStream();
       await createPeer(pid, true);
@@ -106,7 +99,6 @@ ws.addEventListener("message", async (ev) => {
   }
 
   if (msg.type === "peer-joined") {
-    // yeni gelen kişiye OFFER başlat
     await ensureLocalStream();
     await createPeer(msg.id, true);
     return;
@@ -134,7 +126,6 @@ ws.addEventListener("message", async (ev) => {
   }
 });
 
-// ---- Join room ----
 async function joinRoom(roomId) {
   currentRoom = roomId;
   showView("view-call", "Arama");
@@ -142,42 +133,25 @@ async function joinRoom(roomId) {
   ws.send(JSON.stringify({ type: "joinRoom", roomId }));
 }
 
-// ---- Local media (mic) ----
 async function ensureLocalStream() {
   if (localStream) return localStream;
-  localStream = await navigator.mediaDevices.getUserMedia({
-    audio: true, video: false
-  });
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   return localStream;
 }
 
-// ---- WebRTC: create peer ----
 async function createPeer(peerId, isCaller) {
   if (peers.has(peerId)) return peers.get(peerId);
 
   const pc = new RTCPeerConnection(RTC_CONFIG);
   peers.set(peerId, pc);
 
-  // local tracks
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-  // datachannel (chat)
-  let dc;
-  if (isCaller) {
-    dc = pc.createDataChannel("chat");
-    setupDataChannel(peerId, dc);
-  } else {
-    pc.ondatachannel = (e) => setupDataChannel(peerId, e.channel);
-  }
-
-  // remote tracks → <audio>
   pc.ontrack = (e) => {
     let audio = remoteAudios.get(peerId);
     if (!audio) {
       audio = document.createElement("audio");
-      audio.autoplay = true;
-      audio.playsInline = true;
-      audio.style.display = "none";
+      audio.autoplay = true; audio.playsInline = true;
       document.body.appendChild(audio);
       remoteAudios.set(peerId, audio);
     }
@@ -185,30 +159,19 @@ async function createPeer(peerId, isCaller) {
     audio.muted = !!hpMuted;
   };
 
-  // ice
   pc.onicecandidate = (e) => {
     if (e.candidate) {
-      ws.send(JSON.stringify({
-        type: "signal", to: peerId, data: { candidate: e.candidate }
-      }));
+      ws.send(JSON.stringify({ type: "signal", to: peerId, data: { candidate: e.candidate } }));
     }
   };
 
-  // offer/answer
   if (isCaller) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({
-      type: "signal", to: peerId, data: { offer }
-    }));
+    ws.send(JSON.stringify({ type: "signal", to: peerId, data: { offer } }));
   }
 
   return pc;
-}
-
-function setupDataChannel(peerId, dc) {
-  dataChannels.set(peerId, dc);
-  dc.onmessage = (e) => pushChat(`PM ${peerId}: ${e.data}`);
 }
 
 async function handleSignal(fromId, data) {
@@ -230,14 +193,13 @@ async function handleSignal(fromId, data) {
 
 function destroyPeer(id) {
   const pc = peers.get(id);
-  if (pc) { pc.getSenders().forEach(s => s.track && s.track.stop()); pc.close(); }
+  if (pc) pc.close();
   peers.delete(id);
-  const dc = dataChannels.get(id); if (dc) dc.close(); dataChannels.delete(id);
-  const audio = remoteAudios.get(id); if (audio) { audio.srcObject = null; audio.remove(); }
+  const audio = remoteAudios.get(id);
+  if (audio) { audio.srcObject = null; audio.remove(); }
   remoteAudios.delete(id);
 }
 
-// ---- Users (avatars) ----
 function renderUsers(users) {
   const avatars = qs("avatars");
   avatars.innerHTML = "";
@@ -245,7 +207,7 @@ function renderUsers(users) {
     const el = document.createElement("div");
     el.className = "user";
     const img = document.createElement("img");
-    img.src = u.photo || "https://via.placeholder.com/86/2b313b/ffffff?text=👤";
+    img.src = u.photo || "https://via.placeholder.com/80/2b313b/ffffff?text=👤";
     const span = document.createElement("span");
     span.textContent = u.name;
     el.appendChild(img); el.appendChild(span);
@@ -253,7 +215,7 @@ function renderUsers(users) {
   });
 }
 
-// ---- Chat (WebSocket oda chat’i + DC PM hazır) ----
+// Chat
 qs("btn-bell").onclick = () => {
   const panel = qs("chat-panel");
   panel.classList.toggle("hidden");
@@ -277,33 +239,19 @@ function sendChat() {
   qs("chat-text").value = "";
 }
 
-// ---- Controls ----
-const btnMic = qs("btn-mic");
-const btnHp = qs("btn-headphones");
-const btnScreen = qs("btn-screen");
-const btnLeave = qs("btn-leave");
-
-// Mic toggle (local track enable)
-btnMic.onclick = async () => {
+// Kontroller
+qs("btn-mic").onclick = async () => {
   await ensureLocalStream();
   micMuted = !micMuted;
   localStream.getAudioTracks().forEach(t => t.enabled = !micMuted);
-  btnMic.classList.toggle("muted", micMuted);
-  btnMic.querySelector(".icon-mic").classList.toggle("muted", micMuted);
-  btnMic.title = micMuted ? "Mikrofon (kapalı)" : "Mikrofon";
+  qs("btn-mic").classList.toggle("muted", micMuted);
 };
-
-// Headphones toggle (playback mute)
-btnHp.onclick = () => {
+qs("btn-headphones").onclick = () => {
   hpMuted = !hpMuted;
   remoteAudios.forEach(a => a.muted = hpMuted);
-  btnHp.classList.toggle("muted", hpMuted);
-  btnHp.querySelector(".icon-hp").classList.toggle("muted", hpMuted);
-  btnHp.title = hpMuted ? "Kulaklık (kapalı)" : "Kulaklık";
+  qs("btn-headphones").classList.toggle("muted", hpMuted);
 };
-
-// Screen share: replaceTrack
-btnScreen.onclick = async () => {
+qs("btn-screen").onclick = async () => {
   try {
     if (!screenTrack) {
       const display = await navigator.mediaDevices.getDisplayMedia({
@@ -311,47 +259,30 @@ btnScreen.onclick = async () => {
         audio: false
       });
       screenTrack = display.getVideoTracks()[0];
-
-      // Ekranı yeni sender olarak ekle (video yoksa ekler), varsa replaceTrack
       peers.forEach(pc => {
         const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
         if (sender) sender.replaceTrack(screenTrack);
         else pc.addTrack(screenTrack, new MediaStream([screenTrack]));
       });
-
-      btnScreen.classList.add("active");
-      btnScreen.title = "Ekran Paylaş (açık)";
-
+      qs("btn-screen").classList.add("active");
       screenTrack.addEventListener("ended", () => stopScreenShare());
-    } else {
-      stopScreenShare();
-    }
-  } catch (e) {
-    console.error("Ekran paylaşımı hatası:", e);
-  }
+    } else stopScreenShare();
+  } catch (e) { console.error("Ekran paylaşımı hatası:", e); }
 };
-
 function stopScreenShare() {
   if (!screenTrack) return;
-  screenTrack.stop();
-  screenTrack = null;
-
-  // videoyu kaldır (yalnız ses kalır), basitçe null replace
+  screenTrack.stop(); screenTrack = null;
   peers.forEach(pc => {
     const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
     if (sender) sender.replaceTrack(null);
   });
-
-  btnScreen.classList.remove("active");
-  btnScreen.title = "Ekran Paylaş";
+  qs("btn-screen").classList.remove("active");
 }
 
-// Leave (confirm)
-btnLeave.onclick = () => qs("leave-modal").classList.remove("hidden");
+qs("btn-leave").onclick = () => qs("leave-modal").classList.remove("hidden");
 qs("leave-cancel").onclick = () => qs("leave-modal").classList.add("hidden");
 qs("leave-confirm").onclick = () => {
   ws.send(JSON.stringify({ type: "leave" }));
-  // tüm peerleri kapat
   [...peers.keys()].forEach(destroyPeer);
   if (localStream) { localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
   stopScreenShare();
