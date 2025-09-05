@@ -1,3 +1,4 @@
+/* === Genel === */
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -5,26 +6,29 @@ body {
   color: #fff;
 }
 
+.dark {
+  background: #111;
+  color: #eee;
+}
+
 .crumb {
   font-size: 14px;
   padding: 10px;
-  color: #ccc;
+  color: #aaa;
 }
 
-.view.hidden {
-  display: none;
-}
-.view.show {
-  display: block;
-}
+/* === Görünümler === */
+.view.hidden { display: none; }
+.view.show { display: block; }
 
 .card {
   background: #222;
   padding: 20px;
   margin: 50px auto;
-  border-radius: 10px;
+  border-radius: 12px;
   max-width: 400px;
   text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 
 .input, .btn, .file {
@@ -44,16 +48,21 @@ body {
   background: #444;
   color: #fff;
   cursor: pointer;
+  transition: background 0.2s;
 }
-.btn.primary {
-  background: #007bff;
-}
+.btn:hover { background: #555; }
+.btn.primary { background: #007bff; }
+.btn.primary:hover { background: #0062cc; }
 .btn.ghost {
   background: transparent;
   border: 1px solid #555;
 }
 .btn.danger {
   background: #e74c3c;
+}
+.btn.block {
+  display: block;
+  width: 100%;
 }
 
 .avatar-preview {
@@ -63,14 +72,16 @@ body {
   border-radius: 50%;
   background: #555;
   background-size: cover;
+  background-position: center;
 }
 
+/* Menü grid */
 .menu-grid {
   display: grid;
   gap: 15px;
 }
 
-/* Kontroller */
+/* === Kontroller === */
 .controls {
   display: flex;
   justify-content: center;
@@ -83,14 +94,12 @@ body {
   height: 50px;
   border: none;
   border-radius: 50%;
-  background: #333;
-  background-image: url("assets/icons.png");
-  background-size: auto;
-  background-repeat: no-repeat;
+  background: #333 url("assets/icons.png") no-repeat;
+  background-size: 128px auto; /* sprite ölçeği */
   cursor: pointer;
 }
 
-/* Sprite konumları */
+/* Sprite konumları (örnek; kendi sprite ölçüne göre ayarlayacaksın) */
 .mic-on { background-position: 0 0; }
 .mic-off { background-position: -64px 0; }
 .hp-on { background-position: 0 -64px; }
@@ -99,6 +108,7 @@ body {
 .screen-on { background-position: -64px -128px; }
 .leave { background-position: 0 -192px; }
 
+/* === Chat Paneli === */
 .chat-panel {
   position: absolute;
   right: 0;
@@ -110,18 +120,28 @@ body {
   display: flex;
   flex-direction: column;
 }
-.chat-panel.hidden {
-  display: none;
-}
+.chat-panel.hidden { display: none; }
 
 .chat-messages {
   flex: 1;
   padding: 10px;
   overflow-y: auto;
+  font-size: 14px;
 }
+.chat-messages p { margin: 4px 0; }
 
 .chat-input {
   display: flex;
   padding: 10px;
 }
-.chat-input
+.chat-input input {
+  flex: 1;
+  padding: 8px;
+  background: #333;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+}
+.chat-input button {
+  margin-left: 5px;
+}
