@@ -2,27 +2,20 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Ockerem Chat</title>
+  <title>Ockerem Chat + Sesli Sohbet</title>
 </head>
 <body>
-  <h1>Ockerem Chat'e Hoşgeldiniz</h1>
+  <h1>Ockerem Chat + Sesli Sohbet</h1>
+
+  <h2>💬 Mesajlaşma</h2>
   <input id="msgInput" type="text" placeholder="Mesaj yaz..." />
   <button onclick="sendMessage()">Gönder</button>
   <div id="chat"></div>
 
-  <script>
-    const ws = new WebSocket(`ws://${location.host}`);
+  <h2>🎙️ Sesli Sohbet</h2>
+  <button onclick="startVoice()">Sesli Sohbeti Başlat</button>
+  <div id="status">Durum: Bekleniyor...</div>
 
-    ws.onmessage = (event) => {
-      const chat = document.getElementById("chat");
-      chat.innerHTML += "<p>" + event.data + "</p>";
-    };
-
-    function sendMessage() {
-      const input = document.getElementById("msgInput");
-      ws.send(input.value);
-      input.value = "";
-    }
-  </script>
+  <script src="client.js"></script>
 </body>
 </html>
