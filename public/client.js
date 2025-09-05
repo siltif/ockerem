@@ -1,120 +1,261 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8" />
-  <title>OCKEREM</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="dark">
-  <!-- Breadcrumb -->
-  <div id="crumb" class="crumb">Menü</div>
+// ===============================
+// OCKEREM CLIENT
+// ===============================
+const $ = (sel) => document.querySelector(sel);
 
-  <!-- Hesap (ilk sefer) -->
-  <section id="view-account" class="view show">
-    <div class="card animate-in">
-      <h1>OCKEREM</h1>
-      <p class="muted">Hesap oluştur (bir kez)</p>
-      <input id="acc-username" class="input" type="text" maxlength="24" placeholder="Kullanıcı adı" />
-      <label class="file">
-        <input id="acc-photo" type="file" accept="image/*" />
-        Profil fotoğrafı (opsiyonel)
-      </label>
-      <button id="btn-save-account" class="btn primary">Kaydet</button>
-    </div>
-  </section>
+// ---- STATE ----
+let account = null;
+let currentRoom = null;
+let ws;
+let localStream;
+let peerConnection;
+let screenTrack = null;
+let muted = false;
+let deafened = false;
+let unreadMessages = 0;
 
-  <!-- Ana Menü -->
-  <section id="view-menu" class="view hidden">
-    <div class="card animate-in">
-      <h1>OCKEREM</h1>
-      <div class="menu-grid">
-        <button id="goto-create" class="btn block">Oda Oluştur</button>
-        <button id="goto-join" class="btn block">Odaya Katıl</button>
-      </div>
-    </div>
-  </section>
+// ---- INIT ----
+window.addEventListener("load", () => {
+  loadAccount();
+  bindUI();
+});
 
-  <!-- Oda Oluştur -->
-  <section id="view-create" class="view hidden">
-    <div class="card animate-in">
-      <h2>Oda Oluştur</h2>
-      <input id="room-name" class="input" type="text" placeholder="Oda adı..." />
-      <label class="range">
-        Maksimum kişi: <span id="max-out">2</span>
-        <input id="max-count" type="range" min="2" max="5" value="2" />
-      </label>
-      <div class="row">
-        <button id="create-back" class="btn ghost">Geri</button>
-        <button id="create-room" class="btn primary">Odayı Aç</button>
-      </div>
-    </div>
-  </section>
+// ---- ACCOUNT ----
+function loadAccount() {
+  const saved = localStorage.getItem("ockerem-account");
+  if (saved) {
+    account = JSON.parse(saved);
+    showView("menu");
+  } else {
+    showView("account");
+  }
+}
 
-  <!-- Odaya Katıl -->
-  <section id="view-join" class="view hidden">
-    <div class="card animate-in">
-      <h2>Odaya Katıl</h2>
-      <div id="rooms" class="room-list"></div>
-      <div class="slots">
-        <div class="slot" data-i="1"></div>
-        <div class="slot" data-i="2"></div>
-        <div class="slot" data-i="3"></div>
-        <div class="slot" data-i="4"></div>
-        <div class="slot" data-i="5"></div>
-      </div>
-      <div class="row">
-        <button id="join-back" class="btn ghost">Geri</button>
-      </div>
-    </div>
-  </section>
+function saveAccount() {
+  const username = $("#acc-username").value.trim();
+  if (!username) return alert("Kullanıcı adı gerekli");
+  const file = $("#acc-photo").files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      account = { username, photo: reader.result };
+      localStorage.setItem("ockerem-account", JSON.stringify(account));
+      showView("menu");
+    };
+    reader.readAsDataURL(file);
+  } else {
+    account = { username, photo: null };
+    localStorage.setItem("ockerem-account", JSON.stringify(account));
+    showView("menu");
+  }
+}
 
-  <!-- Oda İçi -->
-  <section id="view-call" class="view hidden">
-    <div class="topbar">
-      <div class="left">
-        <span class="title">Arama</span>
-      </div>
-      <div class="right">
-        <button id="btn-bell" class="icon-btn" title="Mesajlar">
-          <span class="bell-dot hidden"></span>
-          🔔
-        </button>
-      </div>
-    </div>
+// ---- UI BINDINGS ----
+function bindUI() {
+  $("#btn-save-account").onclick = saveAccount;
 
-    <div id="avatars" class="avatars animate-in"></div>
+  $("#goto-create").onclick = () => showView("create");
+  $("#goto-join").onclick = () => showView("join");
+  $("#create-back").onclick = () => showView("menu");
+  $("#join-back").onclick = () => showView("menu");
 
-    <!-- Chat panel (gizli açılır) -->
-    <div id="chat-panel" class="chat-panel hidden">
-      <div id="chat-messages" class="chat-messages"></div>
-      <div class="chat-input">
-        <input id="chat-text" type="text" placeholder="Mesaj Gönder..." />
-        <button id="chat-send" class="btn sm">Gönder</button>
-      </div>
-    </div>
+  $("#create-room").onclick = () => {
+    const roomName = $("#room-name").value.trim() || "Oda";
+    const max = parseInt($("#max-count").value);
+    createRoom(roomName, max);
+  };
 
-    <!-- Kontrol çubuğu -->
-    <div class="controls">
-      <button id="btn-mic" class="icon-btn" title="Mikrofon">🎙️</button>
-      <button id="btn-headphones" class="icon-btn" title="Kulaklık">🎧</button>
-      <button id="btn-screen" class="icon-btn" title="Ekran Paylaş">🖥️</button>
-      <button id="btn-leave" class="icon-btn danger" title="Çık">🚪</button>
-    </div>
-  </section>
+  $("#max-count").oninput = (e) => {
+    $("#max-out").innerText = e.target.value;
+  };
 
-  <!-- Çıkış Popup -->
-  <div id="leave-modal" class="modal hidden">
-    <div class="modal-content">
-      <h3>Emin misin?</h3>
-      <p>Odayı terk etmek istediğine emin misin?</p>
-      <div class="row">
-        <button id="leave-cancel" class="btn ghost">Vazgeç</button>
-        <button id="leave-confirm" class="btn danger">Çık</button>
-      </div>
-    </div>
-  </div>
+  $("#btn-mic").onclick = toggleMic;
+  $("#btn-headphones").onclick = toggleHeadphones;
+  $("#btn-screen").onclick = toggleScreenShare;
+  $("#btn-leave").onclick = () => {
+    $("#leave-modal").classList.remove("hidden");
+  };
 
-  <script src="client.js"></script>
-</body>
-</html>
+  $("#leave-cancel").onclick = () => {
+    $("#leave-modal").classList.add("hidden");
+  };
+  $("#leave-confirm").onclick = leaveRoom;
+
+  $("#chat-send").onclick = sendChat;
+  $("#chat-text").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChat();
+  });
+
+  $("#btn-bell").onclick = () => {
+    unreadMessages = 0;
+    updateBell();
+    $("#chat-panel").classList.toggle("hidden");
+  };
+}
+
+// ---- VIEWS ----
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("show"));
+
+  $(`#view-${name}`).classList.remove("hidden");
+  $(`#view-${name}`).classList.add("show");
+
+  if (name === "menu") setCrumb("Menü");
+  if (name === "create") setCrumb("Oda Oluştur");
+  if (name === "join") setCrumb("Odaya Katıl");
+  if (name === "call") setCrumb("Arama");
+}
+
+function setCrumb(text) {
+  $("#crumb").innerText = text;
+}
+
+// ---- ROOM ----
+function createRoom(name, max) {
+  connectWS();
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "create", name, max, account }));
+  };
+}
+
+function joinRoom(roomId) {
+  connectWS();
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "join", roomId, account }));
+  };
+}
+
+function leaveRoom() {
+  if (ws) ws.close();
+  currentRoom = null;
+  showView("menu");
+  $("#leave-modal").classList.add("hidden");
+}
+
+// ---- WEBSOCKET ----
+function connectWS() {
+  ws = new WebSocket(`wss://${location.host}`);
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === "roomList") renderRooms(msg.rooms);
+    if (msg.type === "joined") {
+      currentRoom = msg.room;
+      showView("call");
+      startCall();
+      renderAvatars(msg.users);
+    }
+    if (msg.type === "chat") {
+      addChat(msg.from, msg.text);
+      unreadMessages++;
+      updateBell();
+    }
+    if (msg.type === "updateUsers") {
+      renderAvatars(msg.users);
+    }
+  };
+}
+
+// ---- AVATARS ----
+function renderAvatars(users) {
+  const container = $("#avatars");
+  container.innerHTML = "";
+  users.forEach(u => {
+    const div = document.createElement("div");
+    div.className = "user";
+    div.id = `user-${u.username}`;
+    div.innerHTML = `
+      <img src="${u.photo || "https://via.placeholder.com/80"}">
+      <span>${u.username}</span>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ---- CHAT ----
+function addChat(from, text) {
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.innerHTML = `<b>${from}:</b> ${text}`;
+  $("#chat-messages").appendChild(div);
+  $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
+}
+
+function sendChat() {
+  const text = $("#chat-text").value.trim();
+  if (!text) return;
+  ws.send(JSON.stringify({ type: "chat", text, from: account.username }));
+  $("#chat-text").value = "";
+}
+
+// ---- CONTROLS ----
+function toggleMic() {
+  if (!localStream) return;
+  muted = !muted;
+  localStream.getAudioTracks().forEach(track => track.enabled = !muted);
+  $("#btn-mic").style.color = muted ? "red" : "white";
+}
+
+function toggleHeadphones() {
+  deafened = !deafened;
+  document.querySelectorAll("audio").forEach(a => a.muted = deafened);
+  $("#btn-headphones").style.color = deafened ? "red" : "white";
+}
+
+async function toggleScreenShare() {
+  if (screenTrack) {
+    screenTrack.stop();
+    screenTrack = null;
+    $("#btn-screen").style.color = "white";
+    return;
+  }
+  try {
+    const scr = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 60, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    screenTrack = scr.getVideoTracks()[0];
+    const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
+    if (sender) sender.replaceTrack(screenTrack);
+    else peerConnection.addTrack(screenTrack, scr);
+    $("#btn-screen").style.color = "lime";
+    screenTrack.onended = () => {
+      screenTrack = null;
+      $("#btn-screen").style.color = "white";
+    };
+  } catch (e) {
+    console.error("Ekran paylaşım hatası:", e);
+  }
+}
+
+// ---- BELL ----
+function updateBell() {
+  const dot = document.querySelector(".bell-dot");
+  if (unreadMessages > 0) dot.classList.remove("hidden");
+  else dot.classList.add("hidden");
+}
+
+// ---- CALL ----
+async function startCall() {
+  peerConnection = new RTCPeerConnection();
+
+  // ICE
+  peerConnection.onicecandidate = (e) => {
+    if (e.candidate) ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate }));
+  };
+
+  // Remote
+  peerConnection.ontrack = (e) => {
+    const audio = document.createElement("audio");
+    audio.srcObject = e.streams[0];
+    audio.autoplay = true;
+    document.body.appendChild(audio);
+  };
+
+  // Local
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  ws.send(JSON.stringify(offer));
+}
