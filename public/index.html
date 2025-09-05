@@ -7,11 +7,12 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="dark">
+  <!-- Breadcrumb -->
   <div id="crumb" class="crumb">Menü</div>
 
-  <!-- Hesap -->
+  <!-- Hesap (ilk sefer) -->
   <section id="view-account" class="view show">
-    <div class="card animate-in">
+    <div class="card">
       <h1>OCKEREM</h1>
       <p class="muted">Hesap oluştur (bir kez)</p>
       <input id="acc-username" class="input" type="text" maxlength="24" placeholder="Kullanıcı adı" />
@@ -23,9 +24,9 @@
     </div>
   </section>
 
-  <!-- Menü -->
+  <!-- Ana Menü -->
   <section id="view-menu" class="view hidden">
-    <div class="card animate-in">
+    <div class="card">
       <h1>OCKEREM</h1>
       <div class="menu-grid">
         <button id="goto-create" class="btn block">Oda Oluştur</button>
@@ -36,7 +37,7 @@
 
   <!-- Oda Oluştur -->
   <section id="view-create" class="view hidden">
-    <div class="card animate-in">
+    <div class="card">
       <h2>Oda Oluştur</h2>
       <input id="room-name" class="input" type="text" placeholder="Oda adı..." />
       <label class="range">
@@ -52,16 +53,9 @@
 
   <!-- Odaya Katıl -->
   <section id="view-join" class="view hidden">
-    <div class="card animate-in">
+    <div class="card">
       <h2>Odaya Katıl</h2>
       <div id="rooms" class="room-list"></div>
-      <div class="slots">
-        <div class="slot" data-i="1"></div>
-        <div class="slot" data-i="2"></div>
-        <div class="slot" data-i="3"></div>
-        <div class="slot" data-i="4"></div>
-        <div class="slot" data-i="5"></div>
-      </div>
       <div class="row">
         <button id="join-back" class="btn ghost">Geri</button>
       </div>
@@ -71,16 +65,20 @@
   <!-- Oda İçi -->
   <section id="view-call" class="view hidden">
     <div class="topbar">
-      <div class="left"><span class="title">Arama</span></div>
+      <div class="left">
+        <span class="title">Arama</span>
+      </div>
       <div class="right">
         <button id="btn-bell" class="icon-btn" title="Mesajlar">
-          <span class="bell-dot hidden"></span> 🔔
+          <span class="bell-dot hidden"></span>
+          🔔
         </button>
       </div>
     </div>
 
-    <div id="avatars" class="avatars animate-in"></div>
+    <div id="avatars" class="avatars"></div>
 
+    <!-- Chat panel -->
     <div id="chat-panel" class="chat-panel hidden">
       <div id="chat-messages" class="chat-messages"></div>
       <div class="chat-input">
@@ -89,6 +87,7 @@
       </div>
     </div>
 
+    <!-- Kontroller -->
     <div class="controls">
       <button id="btn-mic" class="icon-btn" title="Mikrofon">🎙️</button>
       <button id="btn-headphones" class="icon-btn" title="Kulaklık">🎧</button>
@@ -97,6 +96,7 @@
     </div>
   </section>
 
+  <!-- Çıkış Popup -->
   <div id="leave-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Emin misin?</h3>
