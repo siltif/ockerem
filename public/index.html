@@ -1,35 +1,118 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Ockerem</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>OCKEREM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body class="dark">
+  <!-- Breadcrumb -->
+  <div id="crumb" class="crumb">Menü</div>
+
+  <!-- Hesap (ilk sefer) -->
+  <section id="view-account" class="view show">
+    <div class="card animate-in">
+      <h1>OCKEREM</h1>
+      <p class="muted">Hesap oluştur (bir kez)</p>
+      <input id="acc-username" class="input" type="text" maxlength="24" placeholder="Kullanıcı adı" />
+      <label class="file">
+        <input id="acc-photo" type="file" accept="image/*" />
+        Profil fotoğrafı (opsiyonel)
+      </label>
+      <button id="btn-save-account" class="btn primary">Kaydet</button>
+    </div>
+  </section>
+
   <!-- Ana Menü -->
-  <div id="menu">
-    <h1>Ockerem</h1>
-    <input id="username" type="text" placeholder="Kullanıcı adı" />
-    <input id="photo" type="file" accept="image/*" />
-    <button onclick="enterRoom()">Odaya Gir</button>
-  </div>
+  <section id="view-menu" class="view hidden">
+    <div class="card animate-in">
+      <h1>OCKEREM</h1>
+      <div class="menu-grid">
+        <button id="goto-create" class="btn block">Oda Oluştur</button>
+        <button id="goto-join" class="btn block">Odaya Katıl</button>
+      </div>
+    </div>
+  </section>
 
-  <!-- Sohbet Odası -->
-  <div id="room" class="hidden">
-    <header>
-      <h1>Ockerem</h1>
-    </header>
+  <!-- Oda Oluştur -->
+  <section id="view-create" class="view hidden">
+    <div class="card animate-in">
+      <h2>Oda Oluştur</h2>
+      <input id="room-name" class="input" type="text" placeholder="Oda adı..." />
+      <label class="range">
+        Maksimum kişi: <span id="max-out">2</span>
+        <input id="max-count" type="range" min="2" max="5" value="2" />
+      </label>
+      <div class="row">
+        <button id="create-back" class="btn ghost">Geri</button>
+        <button id="create-room" class="btn primary">Odayı Aç</button>
+      </div>
+    </div>
+  </section>
 
-    <main>
-      <div id="users"></div>
-    </main>
+  <!-- Odaya Katıl -->
+  <section id="view-join" class="view hidden">
+    <div class="card animate-in">
+      <h2>Odaya Katıl</h2>
+      <div id="rooms" class="room-list"></div>
+      <div class="slots">
+        <div class="slot" data-i="1"></div>
+        <div class="slot" data-i="2"></div>
+        <div class="slot" data-i="3"></div>
+        <div class="slot" data-i="4"></div>
+        <div class="slot" data-i="5"></div>
+      </div>
+      <div class="row">
+        <button id="join-back" class="btn ghost">Geri</button>
+      </div>
+    </div>
+  </section>
 
-    <footer>
-      <button id="btnMute" onclick="toggleMute()">🎙️ Mute</button>
-      <button id="btnDeafen" onclick="toggleDeafen()">🔇 Kulaklık</button>
-      <button onclick="leaveRoom()">🚪 Çık</button>
-      <button onclick="shareScreen()">🖥️ Ekran Paylaş</button>
-    </footer>
+  <!-- Oda İçi -->
+  <section id="view-call" class="view hidden">
+    <div class="topbar">
+      <div class="left">
+        <span class="title">Arama</span>
+      </div>
+      <div class="right">
+        <button id="btn-bell" class="icon-btn" title="Mesajlar">
+          <span class="bell-dot hidden"></span>
+          🔔
+        </button>
+      </div>
+    </div>
+
+    <div id="avatars" class="avatars animate-in"></div>
+
+    <!-- Chat panel (gizli açılır) -->
+    <div id="chat-panel" class="chat-panel hidden">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input id="chat-text" type="text" placeholder="Mesaj Gönder..." />
+        <button id="chat-send" class="btn sm">Gönder</button>
+      </div>
+    </div>
+
+    <!-- Kontrol çubuğu -->
+    <div class="controls">
+      <button id="btn-mic" class="icon-btn" title="Mikrofon">🎙️</button>
+      <button id="btn-headphones" class="icon-btn" title="Kulaklık">🎧</button>
+      <button id="btn-screen" class="icon-btn" title="Ekran Paylaş">🖥️</button>
+      <button id="btn-leave" class="icon-btn danger" title="Çık">🚪</button>
+    </div>
+  </section>
+
+  <!-- Çıkış Popup -->
+  <div id="leave-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Emin misin?</h3>
+      <p>Odayı terk etmek istediğine emin misin?</p>
+      <div class="row">
+        <button id="leave-cancel" class="btn ghost">Vazgeç</button>
+        <button id="leave-confirm" class="btn danger">Çık</button>
+      </div>
+    </div>
   </div>
 
   <script src="client.js"></script>
