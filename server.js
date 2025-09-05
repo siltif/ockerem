@@ -30,15 +30,6 @@ const server = http.createServer((req, res) => {
 // ---- WebSocket signaling ----
 const wss = new WebSocket.Server({ server });
 
-/**
- * rooms: {
- *   [roomId]: {
- *     id, name, max,
- *     clients: Map<clientId, ws>,
- *     meta: Map<clientId, {name, photo}>
- *   }
- * }
- */
 const rooms = {};
 let cidSeq = 1;
 
@@ -70,7 +61,6 @@ wss.on("connection", (ws) => {
   ws._roomId = null;
   ws._account = { name: `Kullanıcı ${clientId}`, photo: null };
 
-  // welcome + initial rooms
   ws.send(JSON.stringify({ type: "welcome", clientId }));
   broadcastRoomList();
 
@@ -78,7 +68,6 @@ wss.on("connection", (ws) => {
     let msg = null;
     try { msg = JSON.parse(raw.toString()); } catch { return; }
 
-    // account info
     if (msg.type === "account") {
       ws._account = { name: msg.name, photo: msg.photo || null };
       if (ws._roomId && rooms[ws._roomId]) {
@@ -88,7 +77,6 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // create room
     if (msg.type === "createRoom") {
       const id = "r" + Math.random().toString(36).slice(2, 8);
       rooms[id] = {
@@ -101,14 +89,12 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // join room
     if (msg.type === "joinRoom" && rooms[msg.roomId]) {
       const room = rooms[msg.roomId];
       if (room.clients.size >= room.max) {
         ws.send(JSON.stringify({ type: "roomFull" }));
         return;
       }
-      // leave previous
       if (ws._roomId && rooms[ws._roomId]) {
         const prev = rooms[ws._roomId];
         prev.clients.delete(ws._id);
@@ -121,11 +107,9 @@ wss.on("connection", (ws) => {
       room.meta.set(ws._id, ws._account);
       ws._roomId = room.id;
 
-      // tell new peer existing peers
       const peers = [...room.clients.keys()].filter(id => id !== ws._id);
       ws.send(JSON.stringify({ type: "peers", peers }));
 
-      // tell others this peer joined
       room.clients.forEach(other => {
         if (other !== ws) other.send(JSON.stringify({ type: "peer-joined", id: ws._id }));
       });
@@ -135,7 +119,6 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // leave
     if (msg.type === "leave") {
       if (ws._roomId && rooms[ws._roomId]) {
         const room = rooms[ws._roomId];
@@ -150,7 +133,6 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // chat relay (oda içi)
     if (msg.type === "chat") {
       const room = rooms[ws._roomId];
       if (!room) return;
@@ -160,7 +142,6 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // WebRTC signaling
     if (msg.type === "signal" && msg.to && msg.data) {
       const room = rooms[ws._roomId];
       if (!room) return;
