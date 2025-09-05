@@ -1,12 +1,12 @@
 {
   "name": "ockerem",
   "version": "1.0.0",
-  "description": "Ockerem Chat + Sesli Sohbet",
+  "description": "Ockerem Chat App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "ws": "^8.17.0"
+    "ws": "^8.16.0"
   }
 }
