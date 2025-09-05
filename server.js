@@ -1,163 +1,189 @@
-// ===============================
-// OCKEREM - Server
-// ===============================
 const http = require("http");
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
 const WebSocket = require("ws");
 
+const PORT = process.env.PORT || 3000;
+
+// ---- Static server (public/) ----
 const server = http.createServer((req, res) => {
-  let filePath = "./public" + (req.url === "/" ? "/index.html" : req.url);
-  let ext = path.extname(filePath);
-  let contentType = "text/html";
+  let filePath = req.url === "/" ? "/index.html" : req.url;
+  const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, "");
+  const finalPath = path.join(__dirname, "public", safePath);
 
-  switch (ext) {
-    case ".js":
-      contentType = "application/javascript";
-      break;
-    case ".css":
-      contentType = "text/css";
-      break;
-    case ".png":
-      contentType = "image/png";
-      break;
-    case ".jpg":
-    case ".jpeg":
-      contentType = "image/jpeg";
-      break;
-  }
-
-  fs.readFile(filePath, (err, content) => {
+  fs.readFile(finalPath, (err, data) => {
     if (err) {
       res.writeHead(404);
-      res.end("404 Not Found");
-    } else {
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content, "utf-8");
+      return res.end("Not found");
     }
+    const ext = path.extname(finalPath).toLowerCase();
+    const type =
+      ext === ".html" ? "text/html" :
+      ext === ".css"  ? "text/css"  :
+      ext === ".js"   ? "application/javascript" :
+      "application/octet-stream";
+    res.writeHead(200, { "Content-Type": type });
+    res.end(data);
   });
 });
 
+// ---- WebSocket signaling ----
 const wss = new WebSocket.Server({ server });
 
-// ===============================
-// Oda ve Kullanıcı Yönetimi
-// ===============================
-let rooms = {}; // { roomId: { name, max, users: {} } }
+/**
+ * rooms: {
+ *   [roomId]: {
+ *     id, name, max,
+ *     clients: Map<clientId, ws>,
+ *     meta: Map<clientId, {name, photo}>
+ *   }
+ * }
+ */
+const rooms = {};
+let cidSeq = 1;
+
+function broadcastRoomList() {
+  const payload = JSON.stringify({
+    type: "rooms",
+    rooms: Object.values(rooms).map(r => ({
+      id: r.id,
+      name: r.name,
+      max: r.max,
+      count: r.clients.size,
+    })),
+  });
+  wss.clients.forEach(c => c.readyState === WebSocket.OPEN && c.send(payload));
+}
+
+function sendUsers(room) {
+  const users = [...room.clients.keys()].map(id => ({
+    id,
+    ...(room.meta.get(id) || { name: "Kullanıcı", photo: null }),
+  }));
+  const payload = JSON.stringify({ type: "users", users });
+  room.clients.forEach(ws => ws.readyState === WebSocket.OPEN && ws.send(payload));
+}
 
 wss.on("connection", (ws) => {
-  ws.on("message", (msg) => {
-    try {
-      const data = JSON.parse(msg);
+  const clientId = String(cidSeq++);
+  ws._id = clientId;
+  ws._roomId = null;
+  ws._account = { name: `Kullanıcı ${clientId}`, photo: null };
 
-      // Hesap bilgisi kaydet
-      if (data.type === "account") {
-        ws.user = { name: data.name, photo: data.photo };
+  // welcome + initial rooms
+  ws.send(JSON.stringify({ type: "welcome", clientId }));
+  broadcastRoomList();
+
+  ws.on("message", (raw) => {
+    let msg = null;
+    try { msg = JSON.parse(raw.toString()); } catch { return; }
+
+    // account info
+    if (msg.type === "account") {
+      ws._account = { name: msg.name, photo: msg.photo || null };
+      if (ws._roomId && rooms[ws._roomId]) {
+        rooms[ws._roomId].meta.set(ws._id, ws._account);
+        sendUsers(rooms[ws._roomId]);
+      }
+      return;
+    }
+
+    // create room
+    if (msg.type === "createRoom") {
+      const id = "r" + Math.random().toString(36).slice(2, 8);
+      rooms[id] = {
+        id, name: msg.roomName || "Oda",
+        max: Math.max(2, Math.min(5, Number(msg.maxCount || 2))),
+        clients: new Map(),
+        meta: new Map(),
+      };
+      broadcastRoomList();
+      return;
+    }
+
+    // join room
+    if (msg.type === "joinRoom" && rooms[msg.roomId]) {
+      const room = rooms[msg.roomId];
+      if (room.clients.size >= room.max) {
+        ws.send(JSON.stringify({ type: "roomFull" }));
+        return;
+      }
+      // leave previous
+      if (ws._roomId && rooms[ws._roomId]) {
+        const prev = rooms[ws._roomId];
+        prev.clients.delete(ws._id);
+        prev.meta.delete(ws._id);
+        prev.clients.forEach(other => other.send(JSON.stringify({ type:"peer-left", id: ws._id })));
+        if (prev.clients.size === 0) delete rooms[ws._roomId];
       }
 
-      // Oda oluştur
-      if (data.type === "createRoom") {
-        let id = Date.now().toString();
-        rooms[id] = {
-          id,
-          name: data.roomName,
-          max: data.maxCount,
-          users: {}
-        };
-        broadcastRooms();
-      }
+      room.clients.set(ws._id, ws);
+      room.meta.set(ws._id, ws._account);
+      ws._roomId = room.id;
 
-      // Odaya katıl
-      if (data.type === "joinRoom") {
-        const room = rooms[data.roomId];
-        if (room && Object.keys(room.users).length < room.max) {
-          room.users[ws._socket.remotePort] = ws.user;
-          ws.roomId = data.roomId;
-          broadcastRoomUsers(room);
-        }
-      }
+      // tell new peer existing peers
+      const peers = [...room.clients.keys()].filter(id => id !== ws._id);
+      ws.send(JSON.stringify({ type: "peers", peers }));
 
-      // Mesaj gönder
-      if (data.type === "chat") {
-        const room = rooms[ws.roomId];
-        if (room) {
-          for (let client of wss.clients) {
-            if (client.readyState === WebSocket.OPEN && client.roomId === ws.roomId) {
-              client.send(JSON.stringify({
-                type: "chat",
-                name: ws.user.name,
-                photo: ws.user.photo,
-                text: data.text
-              }));
-            }
-          }
-        }
-      }
+      // tell others this peer joined
+      room.clients.forEach(other => {
+        if (other !== ws) other.send(JSON.stringify({ type: "peer-joined", id: ws._id }));
+      });
 
-      // WebRTC sinyali
-      if (data.type === "signal") {
-        for (let client of wss.clients) {
-          if (client !== ws && client.readyState === WebSocket.OPEN && client.roomId === ws.roomId) {
-            client.send(JSON.stringify({
-              type: "signal",
-              from: ws.user.name,
-              data: data.data
-            }));
-          }
-        }
-      }
+      sendUsers(room);
+      broadcastRoomList();
+      return;
+    }
 
-      // Odadan ayrıl
-      if (data.type === "leave") {
-        leaveRoom(ws);
+    // leave
+    if (msg.type === "leave") {
+      if (ws._roomId && rooms[ws._roomId]) {
+        const room = rooms[ws._roomId];
+        room.clients.delete(ws._id);
+        room.meta.delete(ws._id);
+        room.clients.forEach(other => other.send(JSON.stringify({ type:"peer-left", id: ws._id })));
+        sendUsers(room);
+        if (room.clients.size === 0) delete rooms[ws._roomId];
+        ws._roomId = null;
+        broadcastRoomList();
       }
+      return;
+    }
 
-    } catch (err) {
-      console.error("WS error:", err);
+    // chat relay (oda içi)
+    if (msg.type === "chat") {
+      const room = rooms[ws._roomId];
+      if (!room) return;
+      const name = ws._account?.name || "Kullanıcı";
+      const payload = JSON.stringify({ type: "chat", name, text: msg.text });
+      room.clients.forEach(c => c.readyState === WebSocket.OPEN && c.send(payload));
+      return;
+    }
+
+    // WebRTC signaling
+    if (msg.type === "signal" && msg.to && msg.data) {
+      const room = rooms[ws._roomId];
+      if (!room) return;
+      const target = room.clients.get(msg.to);
+      if (target && target.readyState === WebSocket.OPEN) {
+        target.send(JSON.stringify({ type:"signal", from: ws._id, data: msg.data }));
+      }
+      return;
     }
   });
 
   ws.on("close", () => {
-    leaveRoom(ws);
+    if (ws._roomId && rooms[ws._roomId]) {
+      const room = rooms[ws._roomId];
+      room.clients.delete(ws._id);
+      room.meta.delete(ws._id);
+      room.clients.forEach(other => other.send(JSON.stringify({ type:"peer-left", id: ws._id })));
+      if (room.clients.size === 0) delete rooms[ws._roomId];
+      broadcastRoomList();
+    }
   });
 });
 
-function broadcastRooms() {
-  const roomList = Object.values(rooms).map(r => ({
-    id: r.id,
-    name: r.name,
-    count: Object.keys(r.users).length,
-    max: r.max
-  }));
-  for (let client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: "rooms", rooms: roomList }));
-    }
-  }
-}
-
-function broadcastRoomUsers(room) {
-  const users = Object.values(room.users);
-  for (let client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN && client.roomId === room.id) {
-      client.send(JSON.stringify({ type: "users", users }));
-    }
-  }
-}
-
-function leaveRoom(ws) {
-  if (ws.roomId && rooms[ws.roomId]) {
-    let room = rooms[ws.roomId];
-    delete room.users[ws._socket.remotePort];
-    broadcastRoomUsers(room);
-    if (Object.keys(room.users).length === 0) {
-      delete rooms[ws.roomId];
-      broadcastRooms();
-    }
-  }
-}
-
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 OCKEREM server started on http://localhost:${PORT}`);
+  console.log(`Listening on http://localhost:${PORT}`);
 });
