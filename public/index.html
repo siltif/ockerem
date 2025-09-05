@@ -7,10 +7,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="dark">
-  <!-- Breadcrumb -->
   <div id="crumb" class="crumb">Menü</div>
 
-  <!-- Hesap (ilk sefer) -->
+  <!-- Hesap -->
   <section id="view-account" class="view show">
     <div class="card animate-in">
       <h1>OCKEREM</h1>
@@ -24,7 +23,7 @@
     </div>
   </section>
 
-  <!-- Ana Menü -->
+  <!-- Menü -->
   <section id="view-menu" class="view hidden">
     <div class="card animate-in">
       <h1>OCKEREM</h1>
@@ -72,20 +71,16 @@
   <!-- Oda İçi -->
   <section id="view-call" class="view hidden">
     <div class="topbar">
-      <div class="left">
-        <span class="title">Arama</span>
-      </div>
+      <div class="left"><span class="title">Arama</span></div>
       <div class="right">
         <button id="btn-bell" class="icon-btn" title="Mesajlar">
-          <span class="bell-dot hidden"></span>
-          🔔
+          <span class="bell-dot hidden"></span> 🔔
         </button>
       </div>
     </div>
 
     <div id="avatars" class="avatars animate-in"></div>
 
-    <!-- Chat panel (gizli açılır) -->
     <div id="chat-panel" class="chat-panel hidden">
       <div id="chat-messages" class="chat-messages"></div>
       <div class="chat-input">
@@ -94,7 +89,6 @@
       </div>
     </div>
 
-    <!-- Kontrol çubuğu -->
     <div class="controls">
       <button id="btn-mic" class="icon-btn" title="Mikrofon">🎙️</button>
       <button id="btn-headphones" class="icon-btn" title="Kulaklık">🎧</button>
@@ -103,7 +97,6 @@
     </div>
   </section>
 
-  <!-- Çıkış Popup -->
   <div id="leave-modal" class="modal hidden">
     <div class="modal-content">
       <h3>Emin misin?</h3>
