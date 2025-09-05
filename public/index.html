@@ -2,19 +2,38 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Ockerem Chat + Sesli Sohbet</title>
+  <title>Ockerem</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Ockerem Chat + Sesli Sohbet</h1>
+  <div id="login">
+    <h1>Ockerem</h1>
+    <input id="username" type="text" placeholder="Kullanıcı adı" />
+    <input id="photo" type="file" accept="image/*" />
+    <button onclick="enterChat()">Sohbete Gir</button>
+  </div>
 
-  <h2>💬 Mesajlaşma</h2>
-  <input id="msgInput" type="text" placeholder="Mesaj yaz..." />
-  <button onclick="sendMessage()">Gönder</button>
-  <div id="chat"></div>
+  <div id="chatUI" class="hidden">
+    <header>
+      <h1>Ockerem</h1>
+      <button onclick="toggleTheme()">🌙/☀️</button>
+    </header>
 
-  <h2>🎙️ Sesli Sohbet</h2>
-  <button onclick="startVoice()">Sesli Sohbeti Başlat</button>
-  <div id="status">Durum: Bekleniyor...</div>
+    <main>
+      <div id="chatArea">
+        <div id="chat"></div>
+        <input id="msgInput" type="text" placeholder="Mesaj yaz..." />
+        <button onclick="sendMessage()">Gönder</button>
+      </div>
+
+      <div id="users"></div>
+    </main>
+
+    <footer>
+      <button onclick="startVoice()">🎙️ Sesli Sohbet Başlat</button>
+      <div id="status">Durum: Bekleniyor...</div>
+    </footer>
+  </div>
 
   <script src="client.js"></script>
 </body>
