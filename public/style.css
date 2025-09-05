@@ -91,23 +91,30 @@ h1, h2 { margin-top: 0; }
   background: #111;
 }
 
-/* Sprite sheet ikonlar */
+/* === Sprite ikonlar === */
+
+/* Kontrol ikonları (Adsız tasarım 14.png) */
 .icon {
-  background-image: url("assets/icons.png");
   background-repeat: no-repeat;
   display: inline-block;
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
 }
 
-/* Örn: senin sprite sheet koordinatlarına göre düzenlemen lazım */
-.icon-mic { background-position: 0 0; }
-.icon-mic-off { background-position: -32px 0; }
-.icon-headphones { background-position: -64px 0; }
-.icon-headphones-off { background-position: -96px 0; }
-.icon-screen { background-position: -128px 0; }
-.icon-screen-on { background-position: -160px 0; }
-.icon-exit { background-position: -192px 0; }
+.icon-mic { background: url("assets/icons1.png") no-repeat 0 0; }
+.icon-mic-off { background: url("assets/icons1.png") no-repeat -64px 0; }
+
+.icon-headphones { background: url("assets/icons1.png") no-repeat -128px 0; }
+.icon-headphones-off { background: url("assets/icons1.png") no-repeat -192px 0; }
+
+.icon-screen { background: url("assets/icons1.png") no-repeat -256px 0; }
+.icon-screen-on { background: url("assets/icons1.png") no-repeat -320px 0; }
+
+.icon-exit { background: url("assets/icons1.png") no-repeat -384px 0; }
+
+/* Bildirim zili (Adsız tasarım 16.png) */
+.icon-bell { background: url("assets/icons2.png") no-repeat 0 0; width: 64px; height: 64px; }
+.icon-bell-new { background: url("assets/icons2.png") no-repeat -64px 0; width: 64px; height: 64px; }
 
 /* Popup */
 .modal {
