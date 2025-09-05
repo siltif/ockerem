@@ -125,4 +125,23 @@ function renderAvatars(members) {
 }
 
 function addAvatar(member) {
-  const avatars
+  const avatars = document.getElementById("avatars");
+  const div = document.createElement("div");
+  div.className = "avatar";
+  div.dataset.id = member.id;
+  if (member.photo) {
+    div.style.backgroundImage = `url(${member.photo})`;
+    div.style.backgroundSize = "cover";
+    div.style.backgroundPosition = "center";
+  } else {
+    div.style.background = "#555";
+  }
+  div.title = member.username;
+  avatars.appendChild(div);
+}
+
+function removeAvatar(id) {
+  const el = document.querySelector(`.avatar[data-id="${id}"]`);
+  if (el) el.remove();
+}
+
