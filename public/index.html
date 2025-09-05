@@ -10,11 +10,12 @@
   <!-- Breadcrumb -->
   <div id="crumb" class="crumb">Menü</div>
 
-  <!-- Hesap -->
+  <!-- Hesap (ilk sefer) -->
   <section id="view-account" class="view show">
-    <div class="card">
+    <div class="card animate-in">
       <h1>OCKEREM</h1>
       <p class="muted">Hesap oluştur (bir kez)</p>
+      <div class="avatar-preview" id="avatar-preview"></div>
       <input id="acc-username" class="input" type="text" maxlength="24" placeholder="Kullanıcı adı" />
       <label class="file">
         <input id="acc-photo" type="file" accept="image/*" />
@@ -26,18 +27,18 @@
 
   <!-- Ana Menü -->
   <section id="view-menu" class="view hidden">
-    <div class="card menu-card">
+    <div class="card animate-in">
       <h1>OCKEREM</h1>
       <div class="menu-grid">
-        <button id="goto-create" class="btn big">➕ Oda Oluştur</button>
-        <button id="goto-join" class="btn big">🔍 Odaya Katıl</button>
+        <button id="goto-create" class="btn block">Oda Oluştur</button>
+        <button id="goto-join" class="btn block">Odaya Katıl</button>
       </div>
     </div>
   </section>
 
   <!-- Oda Oluştur -->
   <section id="view-create" class="view hidden">
-    <div class="card">
+    <div class="card animate-in">
       <h2>Oda Oluştur</h2>
       <input id="room-name" class="input" type="text" placeholder="Oda adı..." />
       <label class="range">
@@ -53,7 +54,7 @@
 
   <!-- Odaya Katıl -->
   <section id="view-join" class="view hidden">
-    <div class="card">
+    <div class="card animate-in">
       <h2>Odaya Katıl</h2>
       <div id="rooms" class="room-list"></div>
       <div class="row">
@@ -71,14 +72,13 @@
       <div class="right">
         <button id="btn-bell" class="icon-btn" title="Mesajlar">
           <span class="bell-dot hidden"></span>
-          🔔
         </button>
       </div>
     </div>
 
-    <div id="avatars" class="avatars"></div>
+    <div id="avatars" class="avatars animate-in"></div>
 
-    <!-- Chat panel -->
+    <!-- Chat panel (gizli açılır) -->
     <div id="chat-panel" class="chat-panel hidden">
       <div id="chat-messages" class="chat-messages"></div>
       <div class="chat-input">
@@ -87,12 +87,12 @@
       </div>
     </div>
 
-    <!-- Kontroller -->
+    <!-- Kontrol çubuğu -->
     <div class="controls">
-      <button id="btn-mic" class="icon-btn"><div class="icon icon-mic"></div></button>
-      <button id="btn-headphones" class="icon-btn"><div class="icon icon-headphones"></div></button>
-      <button id="btn-screen" class="icon-btn"><div class="icon icon-screen"></div></button>
-      <button id="btn-leave" class="icon-btn danger"><div class="icon icon-exit"></div></button>
+      <button id="btn-mic" class="icon-btn mic-on"></button>
+      <button id="btn-headphones" class="icon-btn hp-on"></button>
+      <button id="btn-screen" class="icon-btn screen-off"></button>
+      <button id="btn-leave" class="icon-btn leave"></button>
     </div>
   </section>
 
@@ -107,19 +107,6 @@
       </div>
     </div>
   </div>
-  <!-- Kontrol çubuğu -->
-<div class="controls">
-  <button id="btn-mic" class="icon-btn"><div class="icon icon-mic"></div></button>
-  <button id="btn-headphones" class="icon-btn"><div class="icon icon-headphones"></div></button>
-  <button id="btn-screen" class="icon-btn"><div class="icon icon-screen"></div></button>
-  <button id="btn-leave" class="icon-btn danger"><div class="icon icon-exit"></div></button>
-</div>
-  
-<button id="btn-bell" class="icon-btn" title="Mesajlar">
-  <div class="icon icon-bell"></div>
-  <span class="bell-dot hidden"></span>
-</button>
-
 
   <script src="client.js"></script>
 </body>
