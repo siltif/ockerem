@@ -1,133 +1,127 @@
-body.dark {
-  background: #111;
-  color: #eee;
-  font-family: Arial, sans-serif;
+body {
   margin: 0;
-  padding: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #fff;
 }
 
 .crumb {
-  padding: 10px;
   font-size: 14px;
-  color: #aaa;
+  padding: 10px;
+  color: #ccc;
 }
 
-/* Genel görünüm */
-.view {
+.view.hidden {
   display: none;
-  text-align: center;
-  padding: 20px;
 }
-.view.show { display: block; }
+.view.show {
+  display: block;
+}
+
 .card {
-  background: #1c1c1c;
+  background: #222;
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  margin: 50px auto;
+  border-radius: 10px;
   max-width: 400px;
-  margin: 40px auto;
+  text-align: center;
 }
-h1, h2 { margin-top: 0; }
 
-/* Butonlar */
-.btn {
-  background: #333;
+.input, .btn, .file {
+  margin: 10px 0;
+  padding: 10px;
+  width: 100%;
+  border-radius: 6px;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  color: #eee;
+}
+
+.input {
+  background: #333;
+  color: #fff;
+}
+
+.btn {
+  background: #444;
+  color: #fff;
   cursor: pointer;
-  transition: background 0.2s;
 }
-.btn:hover { background: #444; }
-.btn.primary { background: #0066ff; color: #fff; }
-.btn.ghost { background: transparent; border: 1px solid #555; }
-.btn.danger { background: #c0392b; color: #fff; }
-.btn.big { display:block; width:100%; margin:10px 0; }
-
-/* Menü grid */
-.menu-grid {
-  display: flex;
-  flex-direction: column;
+.btn.primary {
+  background: #007bff;
+}
+.btn.ghost {
+  background: transparent;
+  border: 1px solid #555;
+}
+.btn.danger {
+  background: #e74c3c;
 }
 
-/* Avatarlar */
-.avatars {
-  display: flex;
-  justify-content: center;
-  margin: 20px;
-}
-.avatar {
+.avatar-preview {
   width: 80px;
   height: 80px;
+  margin: 0 auto 15px;
   border-radius: 50%;
-  margin: 0 10px;
-  overflow: hidden;
-  border: 3px solid transparent;
+  background: #555;
+  background-size: cover;
 }
-.avatar.speaking { border-color: #2ecc71; }
 
-/* Chat */
-.chat-panel {
-  background: #1a1a1a;
-  position: fixed;
-  bottom: 70px;
-  left: 0;
-  right: 0;
-  max-height: 200px;
-  overflow-y: auto;
+.menu-grid {
+  display: grid;
+  gap: 15px;
 }
-.chat-messages { padding: 10px; text-align:left; }
-.chat-input { display:flex; }
-.chat-input input { flex:1; padding:8px; }
-.chat-input button { margin-left:5px; }
 
 /* Kontroller */
 .controls {
   display: flex;
   justify-content: center;
   gap: 20px;
-  padding: 15px;
-  background: #111;
+  margin-top: 20px;
 }
 
-/* === Sprite ikonlar === */
-
-/* Kontrol ikonları (Adsız tasarım 14.png) */
-.icon {
+.icon-btn {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 50%;
+  background: #333;
+  background-image: url("assets/icons.png");
+  background-size: auto;
   background-repeat: no-repeat;
-  display: inline-block;
-  width: 64px;
-  height: 64px;
+  cursor: pointer;
 }
 
-.icon-mic { background: url("assets/icons1.png") no-repeat 0 0; }
-.icon-mic-off { background: url("assets/icons1.png") no-repeat -64px 0; }
+/* Sprite konumları */
+.mic-on { background-position: 0 0; }
+.mic-off { background-position: -64px 0; }
+.hp-on { background-position: 0 -64px; }
+.hp-off { background-position: -64px -64px; }
+.screen-off { background-position: 0 -128px; }
+.screen-on { background-position: -64px -128px; }
+.leave { background-position: 0 -192px; }
 
-.icon-headphones { background: url("assets/icons1.png") no-repeat -128px 0; }
-.icon-headphones-off { background: url("assets/icons1.png") no-repeat -192px 0; }
-
-.icon-screen { background: url("assets/icons1.png") no-repeat -256px 0; }
-.icon-screen-on { background: url("assets/icons1.png") no-repeat -320px 0; }
-
-.icon-exit { background: url("assets/icons1.png") no-repeat -384px 0; }
-
-/* Bildirim zili (Adsız tasarım 16.png) */
-.icon-bell { background: url("assets/icons2.png") no-repeat 0 0; width: 64px; height: 64px; }
-.icon-bell-new { background: url("assets/icons2.png") no-repeat -64px 0; width: 64px; height: 64px; }
-
-/* Popup */
-.modal {
-  position: fixed;
-  top:0; left:0; right:0; bottom:0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.modal.hidden { display: none; }
-.modal-content {
+.chat-panel {
+  position: absolute;
+  right: 0;
+  top: 60px;
+  width: 300px;
+  height: calc(100% - 60px);
   background: #222;
-  padding: 20px;
-  border-radius: 12px;
+  border-left: 1px solid #444;
+  display: flex;
+  flex-direction: column;
 }
+.chat-panel.hidden {
+  display: none;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.chat-input {
+  display: flex;
+  padding: 10px;
+}
+.chat-input
